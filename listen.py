@@ -532,18 +532,27 @@ def influxdb_publish(event, data):
                                 port=args.influxdb_port,
                                 username=args.influxdb_user,
                                 password=args.influxdb_pass,
-                                database=args.influxdb_db)
-        payload = {}
-        payload['measurement'] = event
+                                database=args.influxdb_db,
+                                ssl=True)
+        points = []
+        for k,v in data.items():
+            if k == 'timestamp':
+                continue
 
-        payload['time']   = data['timestamp']
-        payload['fields'] = data
+            payload = {}
+            payload['measurement'] = k
+            payload['time'] = data['timestamp']
+            payload['fields'] = {'value': v}
+            payload['tags'] = { 'sensor': "weatherflow"}
+
+            points.append(payload)
+
 
         if args.verbose:
             print ("publishing %s to influxdb [%s:%s]: %s" % (event,args.influxdb_host, args.influxdb_port, payload))
 
         # write_points() allows us to pass in a precision with the timestamp
-        client.write_points([payload], time_precision='s')
+        client.write_points(points, time_precision='s')
 
     except Exception as e:
         print("Failed to connect to InfluxDB: %s" % e)
